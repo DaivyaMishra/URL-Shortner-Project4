@@ -46,8 +46,9 @@ const getUrlCode = async function(req,res) {
       // If we have don't set any data in cache ,then it will fetch the data from mongo db
         const url = await urlModel.findOne({urlCode: urlCode1}).select({longUrl:1,_id:0})
        const url2 = JSON. stringify(url.longUrl)
-       console.log(url2)
-        res.redirect(200,url2)
+       const logoUrl2= url2.replaceAll('"', '');
+       console.log(logoUrl2)
+        res.redirect(200,logoUrl2)
         
    
 }
