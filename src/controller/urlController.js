@@ -16,13 +16,10 @@ redisClient.auth("2uSDoorSkYSoGf4MLMcIl6YkTzkSh9oT", function (err) {
   if (err) throw err;
 });
 
-redisClient.on('connect', function(){
+redisClient.on('connect', async function(){
   console.log('Connected to Redis');
 });
 
-redisClient.on('error', function(err) {
-   console.log('Redis error: ' + err);
-});
 
 // --------------------------validation functions------------------------------------------------
 
@@ -48,13 +45,9 @@ const GET_ASYNC = promisify(redisClient.GET).bind(redisClient);
 const urlShortner= async function(req, res){
      try{
     let url = req.body;
-    let urlCode = shortid.generate()
-    let baseUrl = "http://localhost:3000";
-    let shortUrl= baseUrl + "/"+ urlCode;
     let longUrl = url.longUrl
-    
     // -------------------------------------url validations---------------------------------------
-    let urlData = {longUrl, shortUrl,urlCode};
+    
     if (!isValiedRequestBody(url)){
       return res.status(400).send({status: false, msg:"Please Enter some LOngUrl url"})
     }
@@ -62,38 +55,36 @@ const urlShortner= async function(req, res){
       return res.status(400).send({status: false, msg:"Please Provide longUrl"})
     }
   
-  if (!validUrl.isUri(longUrl)){
+    if (!validUrl.isUri(longUrl)){
     return res.status(400).send({status: false, msg:"Please Provide  valid longUrl"})
-  }
+    }
 
-  // ===========================redis====================
+    let urlCode = shortid.generate()
+    let baseUrl = "http://localhost:3000";
+    let shortUrl= baseUrl + "/"+ urlCode;
+    let urlData = {longUrl, shortUrl,urlCode};
+    
+    
+  
 
 // --------------------------------------------already shortern validation------------------------
+
 let cachesUrlData = await GET_ASYNC(`${req.body.longUrl}`);
-  if (cachesUrlData) {
-      return res.status(200).send({ status: true,  data: JSON.parse(cachesUrlData) })
 
-  } else {  
-
+      if (cachesUrlData) {  return res.status(200).send({ status: true,  data: JSON.parse(cachesUrlData), msg:'returning from cache' })  }
+      else {  
           let dbUrlData = await urlModel.findOne({ longUrl:longUrl}).select({urlCode:1,_id:0})
-  
           if (dbUrlData ) {
-          return res.status(400).send({ status: false, message: "This url is already shorten" , msg:dbUrlData})
-
-      } 
-      // else {
-      //   // To create shorturl from adding the baseurl and urlcode
-      //     const shortUrl = baseUrl + '/' + urlCode.toLowerCase()
-      // }
+          return res.status(400).send({ status: false, message: "This url is already shorten",msg:'returning from cache' , data:dbUrlData}) } 
+     
 
       // -----------------------------------creating short url-------------------------------------
 
-    let urlCreate= await urlModel.create(urlData);
-    console.log(urlCreate)
-    await SET_ASYNC(`${url}`, JSON.stringify(urlCreate));
-    
-    res.status(201).send({ status:true, data:urlData})
-  }
+      let urlCreate= await urlModel.create(urlData);
+      //  console.log(urlCreate)
+      await SET_ASYNC(`${url}`, JSON.stringify(urlCreate));
+        res.status(201).send({ status:true, msg:' returning from Database', data:urlData})
+      } 
     
       }
     catch (err) {
@@ -104,14 +95,7 @@ let cachesUrlData = await GET_ASYNC(`${req.body.longUrl}`);
 }
     
 
-
-
-
-
-
-
-
-    //=========================== Get URL APi========================================================
+ //=========================== Get URL APi========================================================
        
 
 const getUrlCode = async function(req,res) {
@@ -132,29 +116,24 @@ if (cachesUrlData) {
     return res.redirect(302,urlData.longUrl);
 }
 else{
-// ------------------------validating uniqueness------------------------------------------------------
+// ------------------------finding in DB ------------------------------------------------------
+
 const dbUrlData = await urlModel.findOne({urlCode: urlParams}).select({longUrl:1,_id:0})
 console.log(dbUrlData)
 if(!dbUrlData){
   res.status(400).send({status:false, msg:" urlCode not found"})
-}
+} else{
+  await SET_ASYNC(`${urlParams}`, JSON.stringify(dbUrlData)); //setting data from db to cache
 
-//convert to object
-
-  //  =====================================redirecting to longurl=====================================
-  // dbUrl= dbUrlData.longUrl
-  console.log(dbUrlData,"146")
-     const url2 = JSON.stringify(dbUrlData.longUrl)
-     console.log(url2)
-   const replacedUrl= url2.replaceAll('"', '');
+  const url2 = JSON.stringify(dbUrlData.longUrl) //stringifying long url 
+     console.log(url2,"135")
+  const replacedUrl= url2.replaceAll('"', '');// removing quotes from url
    console.log(replacedUrl)
-   const redirectUrl= replacedUrl
-    // res.redirect(302,replacedUrl)
-    await SET_ASYNC(`${urlParams}`, JSON.stringify(dbUrlData));
-    res.redirect(302,redirectUrl);
-
-    
-    // console.log(url,"97")
+  const redirectUrl= replacedUrl
+   res.redirect(302,redirectUrl).send({msg:'from cache'}); //redirecting to long url
+  
+   
+}
 }
 
    
@@ -171,6 +150,7 @@ catch (err) {
 
 module.exports.urlShortner= urlShortner
 module.exports.getUrlCode= getUrlCode
+
 
 
 
