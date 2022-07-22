@@ -2,7 +2,6 @@ const urlModel = require("../model/urlModel")
 const shortid = require("shortid")
 const redis = require("redis")
 const validUrl = require('valid-url');
-const { findOne } = require("../model/urlModel");
 const { promisify } = require("util");
 
 
@@ -59,8 +58,8 @@ const urlShortner= async function(req, res){
     return res.status(400).send({status: false, msg:"Please Provide  valid longUrl"})
     }
 
-    if (!validUrl.isHttpUri(longUrl)){
-      return res.status(400).send({status: false, msg:"Please Provide  valid longUrl"})
+    if (!validUrl.isHttpsUri(longUrl)){
+      return res.status(400).send({status: false, msg:"Please Provide valid http longUrl"})
       }
     
     let urlCode = shortid.generate()
@@ -73,24 +72,21 @@ const urlShortner= async function(req, res){
 
 // --------------------------------------------already shortern validation------------------------
 
-let cachesUrlData = await GET_ASYNC(`${req.body.longUrl}`);
 
-      if (cachesUrlData) {  return res.status(200).send({ status: true,  data: JSON.parse(cachesUrlData), msg:'returning from cache' })  }
-      else {  
-          let dbUrlData = await urlModel.findOne({ longUrl:longUrl}).select({urlCode:1,shortUrl:1,_id:0})
-          if (dbUrlData ) {
-          return res.status(200).send({ status: false, message: "This url is already shorten",msg:'returning from cache' , data:dbUrlData}) } 
      
-
-      // -----------------------------------creating short url-------------------------------------
-
+  let dbUrlData = await urlModel.findOne({ longUrl:longUrl}).select({urlCode:1,shortUrl:1,_id:0})
+          
+  if (dbUrlData ) {
+    return res.status(200).send({ status: false, message: "This url is already shorten", data:dbUrlData}) } 
+  else{
       let urlCreate= await urlModel.create(urlData);
-      //  console.log(urlCreate)
-      await SET_ASYNC(`${url}`, JSON.stringify(urlCreate));
-        res.status(201).send({ status:true, msg:' returning from Database', data:urlData})
-      } 
+       console.log(urlCreate)
+       
+      
+        res.status(201).send({ status:true, data:urlData})
+      } }
     
-      }
+      
     catch (err) {
 
         return res.status(500).send(' Server Error invalid url')
