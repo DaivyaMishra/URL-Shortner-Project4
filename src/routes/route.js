@@ -8,6 +8,6 @@ router.get("/test-me", function (req, res) {
     res.send("My first ever api!")
 })
 
-router.post("/url/shorten", urlController.urlShortner)
-router.get("/:urlCode",urlController.getUrlCode)
+router.post("/url/shorten", urlController.createShortenUrl)
+router.get("/:urlCode",urlController.getUrl)
 module.exports = router;
