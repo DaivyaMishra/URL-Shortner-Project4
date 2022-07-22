@@ -59,6 +59,10 @@ const urlShortner= async function(req, res){
     return res.status(400).send({status: false, msg:"Please Provide  valid longUrl"})
     }
 
+    if (!validUrl.isHttpUri(longUrl)){
+      return res.status(400).send({status: false, msg:"Please Provide  valid longUrl"})
+      }
+    
     let urlCode = shortid.generate()
     let baseUrl = "http://localhost:3000";
     let shortUrl= baseUrl + "/"+ urlCode;
@@ -73,9 +77,9 @@ let cachesUrlData = await GET_ASYNC(`${req.body.longUrl}`);
 
       if (cachesUrlData) {  return res.status(200).send({ status: true,  data: JSON.parse(cachesUrlData), msg:'returning from cache' })  }
       else {  
-          let dbUrlData = await urlModel.findOne({ longUrl:longUrl}).select({urlCode:1,_id:0})
+          let dbUrlData = await urlModel.findOne({ longUrl:longUrl}).select({urlCode:1,shortUrl:1,_id:0})
           if (dbUrlData ) {
-          return res.status(400).send({ status: false, message: "This url is already shorten",msg:'returning from cache' , data:dbUrlData}) } 
+          return res.status(200).send({ status: false, message: "This url is already shorten",msg:'returning from cache' , data:dbUrlData}) } 
      
 
       // -----------------------------------creating short url-------------------------------------
@@ -121,7 +125,7 @@ else{
 const dbUrlData = await urlModel.findOne({urlCode: urlParams}).select({longUrl:1,_id:0})
 console.log(dbUrlData)
 if(!dbUrlData){
-  res.status(400).send({status:false, msg:" urlCode not found"})
+  res.status(404).send({status:false, msg:" urlCode not found"})
 } else{
   await SET_ASYNC(`${urlParams}`, JSON.stringify(dbUrlData)); //setting data from db to cache
 
